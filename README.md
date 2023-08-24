@@ -7,6 +7,6 @@
 
 3. サーバー側でpython npserver.pyでサーバーをたてる
 
-4.Blender側でEditモードで、複数オブジェクトの点群を選択し、command+shift+P -> run script でnpclient.py
+4. Blender側でEditモードで、複数オブジェクトの点群を選択し、command+shift+P -> run script でnpclient.py
 
-5.Blender上にConmeshが生成される
+5. Blender上にConmeshが生成される
