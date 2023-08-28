@@ -48,7 +48,7 @@ vertices = get_nppoints()
 
 print("simple np client")
 with NumpySocket() as s:
-    s.connect(("localhost", 9999))
+    s.connect(("", 9999)) #it should be "" 
     
     logger.info("sending numpy array:")
     # frame = np.arange(5000)
