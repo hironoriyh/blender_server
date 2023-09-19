@@ -79,17 +79,19 @@ if selected_objs is not None:
 
                 trans_scale_vertices, center, scale = scale_trans(vertices)
                 print("center:", center, "scale:", scale)
+                # import ipdb; ipdb.set_trace()
+
                 s.sendall(vertices) #
                 # s.sendall(vertices[:, :3]) #
 
                 ret = s.recv()
                 coarse = ret[0]
-                # dense = ret[1]
-                skel = ret[1]
+                dense = ret[1]
+                skel = ret[2]
                 # logger.info(skel.shape, edges.shape)
-                # import ipdb; ipdb.set_trace()
                 transmat = obj.matrix_world.copy()
                 nppts2obj(skel, transmat, objname + "_skel")
+                nppts2obj(dense, transmat, objname + "_dense")
                 nppts2obj(coarse, transmat,  objname + "_coarse")
 
                 s.close()

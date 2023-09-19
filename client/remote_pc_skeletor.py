@@ -17,13 +17,20 @@ def get_nppoints(selected_obj):
     verts_ind = [i.index for i in selected_obj.data.vertices]
     vertices = []
     # vertex_normals = []
+    # mat = selected_obj.matrix_world
     for i in verts_ind :
-        local_co = selected_obj.matrix_world @ selected_obj.data.vertices[i].co
+        local_co = selected_obj.data.vertices[i].co
+                # local_co = selected_obj.matrix_world @ selected_obj.data.vertices[i].co
         vertices.append(local_co[:])
+    
+    print(selected_obj.matrix_world)
 
     msh.free()
 
     vertices = np.array(vertices)
+    import ipdb; idpb.set_trace()
+
+    vertices = np.random.choice(vertices, size(2000,3))
     # normals = np.array(normals)
 
     # points_normals = np.hstack((vertices, normals))
@@ -35,16 +42,44 @@ def polyline(skel, edges, objname):
     ## adding polyline
     bm = bmesh.new()
     verts = [bm.verts.new((vt[0], vt[1], vt[2])) for vt in skel]
+    
     for edge_idxs in edges:
         bm.edges.new([verts[edge_idxs[0]], verts[edge_idxs[1]]])
 
-    # add placeholder
-    scene = bpy.context.scene 
-    meshes = bpy.data.meshes
-    objects = bpy.data.objects
+    me = bpy.data.meshes.new('polyskel')
+    mesh_obj = bpy.data.objects.new(objname + '_polyskel', me)
+    # scene.collection.objects.link(mesh_obj)
+    bpy.data.collections["skeletons"].objects.link(mesh_obj)
 
-    me = meshes.new('polyskel')
-    mesh_obj = objects.new(objname + '_polyskel', me)
+    bm.to_mesh(me)
+    bm.free()
+
+def normalize_pcd(input_pcd):
+    #center
+    center = input_pcd.mean(axis=0)
+    input_pcd_trans = input_pcd - center
+
+    scale = 1/(input_pcd_trans.max(axis=0) - input_pcd_trans.min(axis=0)).max()
+    input_pcd_trans = input_pcd * scale
+    # input_mesh.apply_scale(scale)
+    # center = input_mesh.centroid
+    # input_mesh.apply_translation(-center)
+    # input_pc = torch.tensor(input_mesh.vertices).cuda().float().unsqueeze(axis=0)
+    return input_pcd_trans, center, scale
+
+def retrans_rescale(input_pcd, center, scale):
+    input_pcd += center
+    input_pcd *= 1/scale
+    return input_pcd
+
+def points(skel, objname, mat):
+    ## adding polyline
+    bm = bmesh.new()
+    verts = [bm.verts.new((vt[0], vt[1], vt[2])) for vt in skel]
+
+    me = bpy.data.meshes.new('polyskel')
+    mesh_obj = bpy.data.objects.new(objname + '_polyskel', me)
+    mesh_obj.matrix_world = mat
     # scene.collection.objects.link(mesh_obj)
     bpy.data.collections["skeletons"].objects.link(mesh_obj)
 
@@ -73,22 +108,32 @@ if selected_objs is not None:
                 s.connect(("", 9999)) ### address should be "" which is 0.0.0.0 
                 
                 objname = obj.name
-                print("name", objname)
+                mat = obj.matrix_world
+                import ipdb; idpb.set_trace()
+
+                print("name", objname, mat)
                 vertices = get_nppoints(obj)
-                print("get nppoints", vertices.shape)
+                vertices_normalized, center, scale = normalize_pcd(ve, rtices)
+                print("get nppoints", vertices.shape, center, scale)
 
                 
                 logger.info("sending numpy array:")
                 # frame = np.arange(5000)
-                s.sendall(vertices) #
+                s.sendall(vertices_normalized) #
                 # s.sendall(vertices[:, :3]) #
 
                 res = s.recv()
+                # import ipdb;ipdb.set_trace()
+
                 skel = res[0]
                 edges = res[1]
-                print(skel.shape, edges.shape)
+                # print(skel.shape, edges.shape)
                 # skel = res.tolist()
-                polyline(skel, edges, objname)
+                skel = retrans_rescale(center, scale)
+                if edges is not None:
+                    polyline(skel, edges, objname)
+                else:
+                    points(skel, objname, mat)
                 s.close()
 
             except: #KeyboardInterrupt:
