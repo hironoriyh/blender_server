@@ -1,5 +1,12 @@
 # blender_server
 
+0. pipの導入
+"""
+cd /opt/blender/3.2/python/bin
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+./python3.10 get-pip.py
+"""
+
 1. blenderのPythonとリモートともnumpysocket.pyをコピペしておく。 (3DOAEはnumpysocket.py)
 
 2. (optional もし1.を実行しておくと必要なし) サーバー側のnumpysocket.pyの[sendall()関数のif not isinstance(frame, np.ndarray)]([url](https://github.com/hironoriyh/blender_server/blob/5c8e9c0880028c51ba6d6feacce153ea672663c7/numpysocket.py#L11-L12))

@@ -28,15 +28,14 @@ def get_nppoints(selected_obj):
     msh.free()
 
     vertices = np.array(vertices)
-    import ipdb; idpb.set_trace()
-
-    vertices = np.random.choice(vertices, size(2000,3))
+    randidx = np.random.choice(vertices.shape[0], 2000, replace=False)
     # normals = np.array(normals)
 
     # points_normals = np.hstack((vertices, normals))
 
-    print("vertices", vertices.shape)
-    return vertices
+    print("vertices orginal ", vertices.shape , "reduced:", randidx.shape)
+    return vertices[randidx, :]
+    # return vertices
 
 def polyline(skel, edges, objname):
     ## adding polyline
@@ -59,8 +58,8 @@ def normalize_pcd(input_pcd):
     center = input_pcd.mean(axis=0)
     input_pcd_trans = input_pcd - center
 
-    scale = 1/(input_pcd_trans.max(axis=0) - input_pcd_trans.min(axis=0)).max()
-    input_pcd_trans = input_pcd * scale
+    scale = 2/(input_pcd_trans.max(axis=0) - input_pcd_trans.min(axis=0)).max()
+    input_pcd_trans = input_pcd_trans * scale
     # input_mesh.apply_scale(scale)
     # center = input_mesh.centroid
     # input_mesh.apply_translation(-center)
@@ -77,19 +76,23 @@ def points(skel, objname, mat):
     bm = bmesh.new()
     verts = [bm.verts.new((vt[0], vt[1], vt[2])) for vt in skel]
 
-    me = bpy.data.meshes.new('polyskel')
-    mesh_obj = bpy.data.objects.new(objname + '_polyskel', me)
+    me = bpy.data.meshes.new('skelpts')
+    mesh_obj = bpy.data.objects.new(objname + '_skelpts', me)
     mesh_obj.matrix_world = mat
     # scene.collection.objects.link(mesh_obj)
-    bpy.data.collections["skeletons"].objects.link(mesh_obj)
+    bpy.data.collections["skelpts"].objects.link(mesh_obj)
 
     bm.to_mesh(me)
     bm.free()
+
+    print("new points were created")
+
 
 
 
 logger = logging.getLogger('numpy client')
 logger.setLevel(logging.INFO)
+
 
 selected_objs = bpy.context.selected_objects
 if selected_objs is not None:
@@ -109,12 +112,12 @@ if selected_objs is not None:
                 
                 objname = obj.name
                 mat = obj.matrix_world
-                import ipdb; idpb.set_trace()
 
                 print("name", objname, mat)
                 vertices = get_nppoints(obj)
-                vertices_normalized, center, scale = normalize_pcd(ve, rtices)
-                print("get nppoints", vertices.shape, center, scale)
+                vertices_normalized, center, scale = normalize_pcd(vertices)
+                print("get nppoints", vertices_normalized.shape, "center", center, "scale", scale)
+                # import ipdb; ipdb.set_trace()
 
                 
                 logger.info("sending numpy array:")
@@ -127,9 +130,10 @@ if selected_objs is not None:
 
                 skel = res[0]
                 edges = res[1]
+                print(skel.max(axis=0)-skel.max(axis=0))
                 # print(skel.shape, edges.shape)
                 # skel = res.tolist()
-                skel = retrans_rescale(center, scale)
+                skel = retrans_rescale(skel, center, scale)
                 if edges is not None:
                     polyline(skel, edges, objname)
                 else:
