@@ -23,8 +23,6 @@ def get_nppoints(selected_obj):
                 # local_co = selected_obj.matrix_world @ selected_obj.data.vertices[i].co
         vertices.append(local_co[:])
     
-    print(selected_obj.matrix_world)
-
     msh.free()
 
     vertices = np.array(vertices)
@@ -113,7 +111,7 @@ if selected_objs is not None:
                 objname = obj.name
                 mat = obj.matrix_world
 
-                print("name", objname, mat)
+                print("name", objname)
                 vertices = get_nppoints(obj)
                 vertices_normalized, center, scale = normalize_pcd(vertices)
                 print("get nppoints", vertices_normalized.shape, "center", center, "scale", scale)
