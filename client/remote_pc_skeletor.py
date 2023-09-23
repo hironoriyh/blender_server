@@ -26,14 +26,14 @@ def get_nppoints(selected_obj):
     msh.free()
 
     vertices = np.array(vertices)
-    randidx = np.random.choice(vertices.shape[0], 2000, replace=False)
+    # randidx = np.random.choice(vertices.shape[0], 2000, replace=False)
     # normals = np.array(normals)
 
     # points_normals = np.hstack((vertices, normals))
 
     print("vertices orginal ", vertices.shape , "reduced:", randidx.shape)
-    return vertices[randidx, :]
-    # return vertices
+    # return vertices[randidx, :]
+    return vertices
 
 def polyline(skel, edges, objname):
     ## adding polyline
@@ -65,8 +65,8 @@ def normalize_pcd(input_pcd):
     return input_pcd_trans, center, scale
 
 def retrans_rescale(input_pcd, center, scale):
-    input_pcd += center
     input_pcd *= 1/scale
+    input_pcd += center
     return input_pcd
 
 def points(skel, objname, mat):
@@ -95,18 +95,18 @@ logger.setLevel(logging.INFO)
 selected_objs = bpy.context.selected_objects
 if selected_objs is not None:
     print(len(selected_objs), "are selected")
-    if  bpy.data.collections.find("skeletons") is -1:
-        skel_coll = bpy.data.collections.new("skeletons")
+    if  bpy.data.collections.find("skelpts") is -1:
+        skel_coll = bpy.data.collections.new("skelpts")
         bpy.context.scene.collection.children.link(skel_coll)
     else:
-        logger.warn("skeletons coll was found!")
+        logger.warn("skelpts coll was found!")
 
 
     for obj in selected_objs:
-        with NumpySocket() as s:
+        with NumpySocket() as sock:
             try:
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                s.connect(("", 9999)) ### address should be "" which is 0.0.0.0 
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.connect(("", 9999)) ### address should be "" which is 0.0.0.0 
                 
                 objname = obj.name
                 mat = obj.matrix_world
@@ -120,24 +120,24 @@ if selected_objs is not None:
                 
                 logger.info("sending numpy array:")
                 # frame = np.arange(5000)
-                s.sendall(vertices_normalized) #
+                sock.sendall(vertices_normalized) #
                 # s.sendall(vertices[:, :3]) #
 
-                res = s.recv()
+                res = sock.recv()
                 # import ipdb;ipdb.set_trace()
 
                 skel = res[0]
-                edges = res[1]
+                # edges = res[1]
                 print(skel.max(axis=0)-skel.max(axis=0))
                 # print(skel.shape, edges.shape)
                 # skel = res.tolist()
                 skel = retrans_rescale(skel, center, scale)
-                if edges is not None:
-                    polyline(skel, edges, objname)
-                else:
-                    points(skel, objname, mat)
-                s.close()
+                # if edges is not None:
+                #     polyline(skel, edges, objname)
+                # else:
+                points(skel, objname, mat)
+                sock.close()
 
             except: #KeyboardInterrupt:
-                s.close()
+                sock.close()
                 print('socket is closed')
