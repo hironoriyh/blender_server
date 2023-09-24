@@ -22,7 +22,8 @@ def get_nppoints(selected_obj):
         local_co = selected_obj.data.vertices[i].co
                 # local_co = selected_obj.matrix_world @ selected_obj.data.vertices[i].co
         vertices.append(local_co[:])
-    
+    # import ipdb;ipdb.set_trace()
+
     msh.free()
 
     vertices = np.array(vertices)
@@ -31,7 +32,7 @@ def get_nppoints(selected_obj):
 
     # points_normals = np.hstack((vertices, normals))
 
-    print("vertices orginal ", vertices.shape , "reduced:", randidx.shape)
+    # print("vertices orginal ", vertices.shape , "reduced:", randidx.shape)
     # return vertices[randidx, :]
     return vertices
 
@@ -56,7 +57,7 @@ def normalize_pcd(input_pcd):
     center = input_pcd.mean(axis=0)
     input_pcd_trans = input_pcd - center
 
-    scale = 2/(input_pcd_trans.max(axis=0) - input_pcd_trans.min(axis=0)).max()
+    scale = 1/(input_pcd_trans.max(axis=0) - input_pcd_trans.min(axis=0)).max()
     input_pcd_trans = input_pcd_trans * scale
     # input_mesh.apply_scale(scale)
     # center = input_mesh.centroid
@@ -65,7 +66,7 @@ def normalize_pcd(input_pcd):
     return input_pcd_trans, center, scale
 
 def retrans_rescale(input_pcd, center, scale):
-    input_pcd *= 1/scale
+    input_pcd *= 2/scale
     input_pcd += center
     return input_pcd
 
@@ -101,11 +102,11 @@ if selected_objs is not None:
     else:
         logger.warn("skelpts coll was found!")
 
-
+    
     for obj in selected_objs:
         with NumpySocket() as sock:
             try:
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 sock.connect(("", 9999)) ### address should be "" which is 0.0.0.0 
                 
                 objname = obj.name
@@ -120,13 +121,15 @@ if selected_objs is not None:
                 
                 logger.info("sending numpy array:")
                 # frame = np.arange(5000)
+
                 sock.sendall(vertices_normalized) #
                 # s.sendall(vertices[:, :3]) #
 
                 res = sock.recv()
-                # import ipdb;ipdb.set_trace()
 
-                skel = res[0]
+                skel = res
+                import ipdb;ipdb.set_trace()
+
                 # edges = res[1]
                 print(skel.max(axis=0)-skel.max(axis=0))
                 # print(skel.shape, edges.shape)
