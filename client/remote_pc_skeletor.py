@@ -27,30 +27,16 @@ def get_nppoints(selected_obj):
     msh.free()
 
     vertices = np.array(vertices)
-    # randidx = np.random.choice(vertices.shape[0], 2000, replace=False)
+    # if(vertices.shape[0] > 2200*6):
+    #     randidx = np.random.choice(vertices.shape[0], 2200*6, replace=False)
+    #     vertices =  vertices[randidx, :]
+
+    randidx = np.random.choice(vertices.shape[0], 2000, replace=False)
+    vertices =  vertices[randidx, :]
     # normals = np.array(normals)
-
     # points_normals = np.hstack((vertices, normals))
-
     # print("vertices orginal ", vertices.shape , "reduced:", randidx.shape)
-    # return vertices[randidx, :]
     return vertices
-
-def polyline(skel, edges, objname):
-    ## adding polyline
-    bm = bmesh.new()
-    verts = [bm.verts.new((vt[0], vt[1], vt[2])) for vt in skel]
-    
-    for edge_idxs in edges:
-        bm.edges.new([verts[edge_idxs[0]], verts[edge_idxs[1]]])
-
-    me = bpy.data.meshes.new('polyskel')
-    mesh_obj = bpy.data.objects.new(objname + '_polyskel', me)
-    # scene.collection.objects.link(mesh_obj)
-    bpy.data.collections["skeletons"].objects.link(mesh_obj)
-
-    bm.to_mesh(me)
-    bm.free()
 
 def normalize_pcd(input_pcd):
     #center
@@ -66,7 +52,7 @@ def normalize_pcd(input_pcd):
     return input_pcd_trans, center, scale
 
 def retrans_rescale(input_pcd, center, scale):
-    input_pcd *= 2/scale
+    input_pcd *= 1/scale
     input_pcd += center
     return input_pcd
 
@@ -87,7 +73,30 @@ def points(skel, objname, mat):
     print("new points were created")
 
 
+def polyline(skels, A_final, objname, mat, center, scale):
+    bm = bmesh.new()
+    for i in range(skels.shape[0]):
+        ## adding polyline
+        skel = retrans_rescale(skels[i], center, scale)
+        verts = [bm.verts.new((vt[0], vt[1], vt[2])) for vt in skel]
 
+        # for i in range(batch_size):
+        for j in range(skels.shape[1]):
+            for k in range(j + 1, skels.shape[1]):
+                if A_final[i][j][k] == 1:
+                    bm.edges.new([verts[j], verts[k]])
+
+
+    me = bpy.data.meshes.new('polyskel')
+    mesh_obj = bpy.data.objects.new(objname + '_polyskel', me)
+    # scene.collection.objects.link(mesh_obj)
+    mesh_obj.matrix_world = mat
+    bpy.data.collections["skeletons"].objects.link(mesh_obj)
+
+    bm.to_mesh(me)
+    bm.free()
+
+    print("new skels were created")
 
 logger = logging.getLogger('numpy client')
 logger.setLevel(logging.INFO)
@@ -119,26 +128,26 @@ if selected_objs is not None:
                 # import ipdb; ipdb.set_trace()
 
                 
-                logger.info("sending numpy array:")
+                logger.info("sending numpy array:", vertices_normalized.shape)
                 # frame = np.arange(5000)
 
                 sock.sendall(vertices_normalized) #
                 # s.sendall(vertices[:, :3]) #
 
                 res = sock.recv()
+                print("shape of res", res.shape)
 
-                skel = res
-                import ipdb;ipdb.set_trace()
+                # skel = res.reshape(-1,3) #res[0]
+                # import ipdb;ipdb.set_trace()
 
-                # edges = res[1]
-                print(skel.max(axis=0)-skel.max(axis=0))
-                # print(skel.shape, edges.shape)
-                # skel = res.tolist()
-                skel = retrans_rescale(skel, center, scale)
-                # if edges is not None:
-                #     polyline(skel, edges, objname)
+                skels = res[:,:,:3]
+                A_final = res[:,:,3:]
+
+                print(skels.shape, A_final.shape)
+                if A_final is not None:
+                    polyline(skels, A_final, objname, mat, center, scale)
                 # else:
-                points(skel, objname, mat)
+                # points(skel, objname, mat)
                 sock.close()
 
             except: #KeyboardInterrupt:
